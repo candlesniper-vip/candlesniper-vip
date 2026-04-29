@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CandleSniper VIP Dashboard</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .header {
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #222;
+    }
+    .header h1 {
+      font-size: 22px;
+      color: #ffd700;
+    }
+    .subtext {
+      font-size: 12px;
+      color: #888;
+    }
+    .pairs-scroll {
+      display: flex;
+      overflow-x: auto;
+      padding: 10px 15px;
+      gap: 10px;
+      border-bottom: 1px solid #222;
+    }
+    .pair-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #ccc;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 13px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .pair-btn.active {
+      background: #ffd700;
+      color: #000;
+      border: 1px solid #ffd700;
+      font-weight: bold;
+    }
+    .chart-container {
+      height: 300px;
+      margin: 10px 15px;
+      border: 1px solid #222;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .signals-panel {
+      margin: 15px;
+      padding: 15px;
+      background: #111;
+      border-radius: 12px;
+      border: 1px solid #222;
+    }
+    .signals-panel h2 {
+      color: #ffd700;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+    .signal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #1a1a1a;
+      font-size: 14px;
+    }
+    .signal-row .symbol {
+      color: #ccc;
+    }
+    .signal-row .price {
+      color: #fff;
+      font-weight: bold;
+    }
+    .signal-row .direction.up { color: #4caf50; }
+    .signal-row .direction.down { color: #f44336; }
+    .badge {
+      background: #333;
+      color: #999;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>🔻 CandleSniper VIP</h1>
+      <div class="subtext">Real‑time Pocket Option Dashboard</div>
+    </div>
+  </div>
+
+  <!-- Pair selector -->
+  <div class="pairs-scroll" id="pairSelector">
+    <!-- Filled by JS -->
+  </div>
+
+  <!-- TradingView Chart Widget -->
+  <div class="chart-container" id="tvChartContainer">
+    <!-- TradingView widget will be inserted here -->
+  </div>
+
+  <!-- Recent Signals -->
+  <div class="signals-panel">
+    <h2>📊 Recent Signals</h2>
+    <div id="signalsList">
+      <div class="signal-row">Loading signals...</div>
+    </div>
+  </div>
+
+  <div class="footer">@CandleSniperVIPBot</div>
+
+  <!-- TradingView Charting Library (free) -->
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+  <script>
+    // ========== CONFIG ==========
+    const FIREBASE_URL = "https://YOUR_PROJECT.firebaseio.com/signals.json"; // <-- PASTE YOUR FIREBASE URL
+
+    const PAIRS = [
+      "EURUSD_otc", "GBPUSD_otc", "USDJPY_otc", "AUDUSD_otc",
+      "USDCAD_otc", "NZDUSD_otc", "EURGBP_otc", "EURJPY_otc",
+      "GBPJPY_otc", "BTCUSD_otc", "ETHUSD_otc", "LTCUSD_otc"
+    ];
+    let currentPair = PAIRS[0];
+
+    // ========== BUILD PAIR SELECTOR ==========
+    const pairSelector = document.getElementById('pairSelector');
+    PAIRS.forEach(p => {
+      const btn = document.createElement('div');
+      btn.className = 'pair-btn';
+      btn.textContent = p.replace('_otc','');
+      btn.onclick = () => switchPair(p);
+      pairSelector.appendChild(btn);
+    });
+    document.querySelector('.pair-btn').classList.add('active');
+
+    // ========== TRADINGVIEW WIDGET ==========
+    function loadChart(symbol) {
+      document.getElementById('tvChartContainer').innerHTML = '';
+      new TradingView.widget({
+        "width": "100%",
+        "height": 280,
+        "symbol": symbol.toUpperCase(),
+        "interval": "15",
+        "timezone": "Etc/UTC",
+        "theme": "dark",
+        "style": "1",
+        "locale": "en",
+        "toolbar_bg": "#0a0a0a",
+        "enable_publishing": false,
+        "hide_side_toolbar": false,
+        "allow_symbol_change": false,
+        "container_id": "tvChartContainer"
+      });
+    }
+    function switchPair(pair) {
+      currentPair = pair;
+      document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      loadChart(pair);
+    }
+    loadChart(currentPair);
+
+    // ========== SIGNALS FROM FIREBASE ==========
+    function fetchSignals() {
+      fetch(FIREBASE_URL)
+        .then(res => res.json())
+        .then(data => {
+          if (!data) return;
+          const signalsList = document.getElementById('signalsList');
+          let html = '';
+          Object.values(data).forEach(sig => {
+            const dirClass = sig.direction === 'UP' ? 'up' : 'down';
+            const emoji = sig.direction === 'UP' ? '🟢' : '🔻';
+            html += `<div class="signal-row">
+              <span class="symbol">${sig.symbol}</span>
+              <span class="price">${sig.price}</span>
+              <span class="direction ${dirClass}">${emoji} ${sig.direction}</span>
+              <span class="badge">${sig.time_left.toFixed(1)}s left</span>
+            </div>`;
+          });
+          signalsList.innerHTML = html || '<div class="signal-row">No signals yet</div>';
+        })
+        .catch(() => {});
+    }
+    fetchSignals();
+    setInterval(fetchSignals, 3000); // refresh every 3 seconds
+  </script>
+</body>
+</html>
