@@ -3,159 +3,208 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CandleSniper VIP</title>
+  <title>CandleSniper VIP Dashboard</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#0b0b0f; color:#fff; font-family:'Segoe UI',system-ui,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
-    /* Top bar like Pocket Option */
-    .topbar { background:#13131a; padding:10px 15px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e1e2a; }
-    .topbar .pair { font-size:18px; color:#fff; font-weight:bold; }
-    .topbar .balance { font-size:14px; color:#888; }
-    /* Chart area */
-    #chartContainer { flex:1; width:100%; position:relative; background:#0b0b0f; }
-    /* Bottom control bar */
-    .controls { background:#13131a; padding:10px 15px; border-top:1px solid #1e1e2a; display:flex; justify-content:space-between; align-items:center; }
-    .controls button { background:#ffd700; color:#000; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; font-size:14px; }
-    .timeframe-btns { display:flex; gap:8px; }
-    .timeframe-btns span { background:#1e1e2a; color:#ccc; padding:6px 12px; border-radius:15px; font-size:12px; cursor:pointer; }
-    .timeframe-btns span.active { background:#ffd700; color:#000; }
-    /* Signal strip at bottom */
-    .signals-strip { background:#0f0f16; padding:8px 15px; border-top:1px solid #1e1e2a; overflow-x:auto; white-space:nowrap; }
-    .signal-tag { display:inline-block; margin-right:8px; padding:5px 12px; border-radius:12px; font-size:12px; }
-    .signal-tag.up { background:#4caf50; color:#000; }
-    .signal-tag.down { background:#f44336; color:#fff; }
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .header {
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #222;
+    }
+    .header h1 {
+      font-size: 22px;
+      color: #ffd700;
+    }
+    .subtext {
+      font-size: 12px;
+      color: #888;
+    }
+    .pairs-scroll {
+      display: flex;
+      overflow-x: auto;
+      padding: 10px 15px;
+      gap: 10px;
+      border-bottom: 1px solid #222;
+    }
+    .pair-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #ccc;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 13px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .pair-btn.active {
+      background: #ffd700;
+      color: #000;
+      border: 1px solid #ffd700;
+      font-weight: bold;
+    }
+    .chart-container {
+      height: 300px;
+      margin: 10px 15px;
+      border: 1px solid #222;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .signals-panel {
+      margin: 15px;
+      padding: 15px;
+      background: #111;
+      border-radius: 12px;
+      border: 1px solid #222;
+    }
+    .signals-panel h2 {
+      color: #ffd700;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+    .signal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #1a1a1a;
+      font-size: 14px;
+    }
+    .signal-row .symbol {
+      color: #ccc;
+    }
+    .signal-row .price {
+      color: #fff;
+      font-weight: bold;
+    }
+    .signal-row .direction.up { color: #4caf50; }
+    .signal-row .direction.down { color: #f44336; }
+    .badge {
+      background: #333;
+      color: #999;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
-  <!-- Top bar -->
-  <div class="topbar">
-    <div class="pair" id="currentPair">EUR/USD OTC</div>
-    <div class="balance" id="signalCount">0 signals</div>
+  <div class="header">
+    <div>
+      <h1>🔻 CandleSniper VIP</h1>
+      <div class="subtext">Real‑time Pocket Option Dashboard</div>
+    </div>
   </div>
-
-  <!-- Chart (lightweight charts) -->
-  <div id="chartContainer"></div>
 
   <!-- Pair selector -->
-  <div style="display:flex; overflow-x:auto; padding:8px 15px; gap:8px; background:#0f0f16; border-top:1px solid #1e1e2a;">
-    <!-- pairs injected by JS -->
-    <div class="pair-scroll" id="pairSelector"></div>
+  <div class="pairs-scroll" id="pairSelector">
+    <!-- Filled by JS -->
   </div>
 
-  <!-- Controls -->
-  <div class="controls">
-    <div class="timeframe-btns">
-      <span class="active" onclick="alert('Only 15s available')">15s</span>
-      <span onclick="alert('Only 15s available')">30s</span>
-      <span onclick="alert('Only 15s available')">1m</span>
+  <!-- TradingView Chart Widget -->
+  <div class="chart-container" id="tvChartContainer">
+    <!-- TradingView widget will be inserted here -->
+  </div>
+
+  <!-- Recent Signals -->
+  <div class="signals-panel">
+    <h2>📊 Recent Signals</h2>
+    <div id="signalsList">
+      <div class="signal-row">Loading signals...</div>
     </div>
-    <button onclick="openPocketOption()">Trade ↗</button>
   </div>
 
-  <!-- Recent signals strip -->
-  <div class="signals-strip" id="signalsStrip">
-    <span class="signal-tag">Waiting for signals...</span>
-  </div>
+  <div class="footer">@CandleSniperVIPBot</div>
 
-  <!-- lightweight-charts library -->
-  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <!-- TradingView Charting Library (free) -->
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script>
-    // ========== FIREBASE CONFIG ==========
-    const FIREBASE_URL = "https://candlesniper-vip-default-rtdb.firebaseio.com/";
+    // ========== CONFIG ==========
+    const FIREBASE_URL = "https://YOUR_PROJECT.firebaseio.com/signals.json"; // <-- PASTE YOUR FIREBASE URL
+
     const PAIRS = [
-      "EURUSD_otc","GBPUSD_otc","USDJPY_otc","AUDUSD_otc",
-      "USDCAD_otc","NZDUSD_otc","EURGBP_otc","EURJPY_otc",
-      "GBPJPY_otc","BTCUSD_otc","ETHUSD_otc","LTCUSD_otc"
+      "EURUSD_otc", "GBPUSD_otc", "USDJPY_otc", "AUDUSD_otc",
+      "USDCAD_otc", "NZDUSD_otc", "EURGBP_otc", "EURJPY_otc",
+      "GBPJPY_otc", "BTCUSD_otc", "ETHUSD_otc", "LTCUSD_otc"
     ];
-
-    // ========== CHART INIT ==========
-    const chart = LightweightCharts.createChart(document.getElementById('chartContainer'), {
-      width: document.getElementById('chartContainer').clientWidth,
-      height: document.getElementById('chartContainer').clientHeight,
-      layout: {
-        backgroundColor: '#0b0b0f',
-        textColor: '#d1d4dc',
-      },
-      grid: {
-        vertLines: { color: '#1e1e2a' },
-        horzLines: { color: '#1e1e2a' },
-      },
-      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-      rightPriceScale: { borderColor: '#2b2b3c' },
-      timeScale: { borderColor: '#2b2b3c', timeVisible: true, secondsVisible: true },
-      localization: { priceFormatter: price => price.toFixed(5) },
-    });
-
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: '#4caf50', downColor: '#f44336', borderDownColor: '#f44336',
-      borderUpColor: '#4caf50', wickDownColor: '#f44336', wickUpColor: '#4caf50',
-    });
-
-    // ========== PAIR SELECTOR ==========
     let currentPair = PAIRS[0];
-    const pairScroll = document.getElementById('pairSelector');
+
+    // ========== BUILD PAIR SELECTOR ==========
+    const pairSelector = document.getElementById('pairSelector');
     PAIRS.forEach(p => {
-      const el = document.createElement('div');
-      el.className = 'timeframe-btns';
-      el.innerHTML = `<span>${p.replace('_otc','')}</span>`;
-      el.onclick = () => switchPair(p);
-      pairScroll.appendChild(el);
+      const btn = document.createElement('div');
+      btn.className = 'pair-btn';
+      btn.textContent = p.replace('_otc','');
+      btn.onclick = () => switchPair(p);
+      pairSelector.appendChild(btn);
     });
+    document.querySelector('.pair-btn').classList.add('active');
+
+    // ========== TRADINGVIEW WIDGET ==========
+    function loadChart(symbol) {
+      document.getElementById('tvChartContainer').innerHTML = '';
+      new TradingView.widget({
+        "width": "100%",
+        "height": 280,
+        "symbol": symbol.toUpperCase(),
+        "interval": "15",
+        "timezone": "Etc/UTC",
+        "theme": "dark",
+        "style": "1",
+        "locale": "en",
+        "toolbar_bg": "#0a0a0a",
+        "enable_publishing": false,
+        "hide_side_toolbar": false,
+        "allow_symbol_change": false,
+        "container_id": "tvChartContainer"
+      });
+    }
     function switchPair(pair) {
       currentPair = pair;
-      document.getElementById('currentPair').textContent = pair.replace('_otc','');
-      fetchCandles(pair);
+      document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      loadChart(pair);
     }
+    loadChart(currentPair);
 
-    // ========== FETCH CANDLES FROM FIREBASE ==========
-    async function fetchCandles(pair) {
-      const resp = await fetch(`${FIREBASE_URL}candles/${pair}.json`);
-      const data = await resp.json();
-      if (!data) return;
-      const candleArr = Object.values(data).sort((a,b) => a.time - b.time);
-      const formatted = candleArr.map(c => ({
-        time: c.time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close
-      }));
-      if (formatted.length > 0) {
-        candleSeries.setData(formatted);
-        chart.timeScale().fitContent();
-      }
+    // ========== SIGNALS FROM FIREBASE ==========
+    function fetchSignals() {
+      fetch(FIREBASE_URL)
+        .then(res => res.json())
+        .then(data => {
+          if (!data) return;
+          const signalsList = document.getElementById('signalsList');
+          let html = '';
+          Object.values(data).forEach(sig => {
+            const dirClass = sig.direction === 'UP' ? 'up' : 'down';
+            const emoji = sig.direction === 'UP' ? '🟢' : '🔻';
+            html += `<div class="signal-row">
+              <span class="symbol">${sig.symbol}</span>
+              <span class="price">${sig.price}</span>
+              <span class="direction ${dirClass}">${emoji} ${sig.direction}</span>
+              <span class="badge">${sig.time_left.toFixed(1)}s left</span>
+            </div>`;
+          });
+          signalsList.innerHTML = html || '<div class="signal-row">No signals yet</div>';
+        })
+        .catch(() => {});
     }
-
-    // ========== UPDATE CANDLES VIA POLLING ==========
-    async function updateCandles() {
-      fetchCandles(currentPair);
-      // Also update signals strip
-      const signalsResp = await fetch(`${FIREBASE_URL}signals.json?orderBy="timestamp"&limitToLast=10`);
-      const signalsData = await signalsResp.json();
-      if (signalsData) {
-        const signals = Object.values(signalsData).sort((a,b) => b.timestamp - a.timestamp);
-        const strip = document.getElementById('signalsStrip');
-        strip.innerHTML = signals.slice(0,10).map(s => {
-          const cls = s.direction === 'UP' ? 'up' : 'down';
-          const emoji = s.direction === 'UP' ? '🟢' : '🔻';
-          return `<span class="signal-tag ${cls}">${emoji} ${s.symbol} @ ${s.price.toFixed(5)}</span>`;
-        }).join('');
-        document.getElementById('signalCount').textContent = signals.length + ' signals';
-      }
-      // Resize chart to container
-      chart.resize(document.getElementById('chartContainer').clientWidth, document.getElementById('chartContainer').clientHeight);
-    }
-
-    function openPocketOption() {
-      window.open('https://pocketoption.com/en/terminal', '_blank');
-    }
-
-    // Initial load
-    switchPair(currentPair);
-    setInterval(updateCandles, 3000);
-    window.addEventListener('resize', () => {
-      chart.resize(document.getElementById('chartContainer').clientWidth, document.getElementById('chartContainer').clientHeight);
-    });
+    fetchSignals();
+    setInterval(fetchSignals, 3000); // refresh every 3 seconds
   </script>
 </body>
 </html>
