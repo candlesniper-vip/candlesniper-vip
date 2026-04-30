@@ -3,208 +3,113 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CandleSniper VIP Dashboard</title>
+  <title>CandleSniper VIP - GitHub Edition</title>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      background: #0a0a0a;
-      color: #fff;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      height: 100vh;
-      overflow-y: auto;
-    }
-    .header {
-      padding: 15px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #222;
-    }
-    .header h1 {
-      font-size: 22px;
-      color: #ffd700;
-    }
-    .subtext {
-      font-size: 12px;
-      color: #888;
-    }
-    .pairs-scroll {
-      display: flex;
-      overflow-x: auto;
-      padding: 10px 15px;
-      gap: 10px;
-      border-bottom: 1px solid #222;
-    }
-    .pair-btn {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      color: #ccc;
-      padding: 8px 15px;
-      border-radius: 20px;
-      font-size: 13px;
-      white-space: nowrap;
-      cursor: pointer;
-    }
-    .pair-btn.active {
-      background: #ffd700;
-      color: #000;
-      border: 1px solid #ffd700;
-      font-weight: bold;
-    }
-    .chart-container {
-      height: 300px;
-      margin: 10px 15px;
-      border: 1px solid #222;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .signals-panel {
-      margin: 15px;
-      padding: 15px;
-      background: #111;
-      border-radius: 12px;
-      border: 1px solid #222;
-    }
-    .signals-panel h2 {
-      color: #ffd700;
-      margin-bottom: 10px;
-      font-size: 18px;
-    }
-    .signal-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid #1a1a1a;
-      font-size: 14px;
-    }
-    .signal-row .symbol {
-      color: #ccc;
-    }
-    .signal-row .price {
-      color: #fff;
-      font-weight: bold;
-    }
-    .signal-row .direction.up { color: #4caf50; }
-    .signal-row .direction.down { color: #f44336; }
-    .badge {
-      background: #333;
-      color: #999;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11px;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-size: 12px;
-    }
+    body { background:#0b0b0f; color:#fff; font-family:'Segoe UI',system-ui,sans-serif; height:100vh; display:flex; flex-direction:column; }
+    .topbar { background:#13131a; padding:10px 15px; display:flex; justify-content:space-between; border-bottom:1px solid #1e1e2a; }
+    .pair { font-size:18px; font-weight:bold; }
+    #chartContainer { flex:1; }
+    .controls { background:#13131a; padding:10px 15px; border-top:1px solid #1e1e2a; display:flex; justify-content:space-between; }
+    .controls button { background:#ffd700; color:#000; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; }
+    .signals-strip { background:#0f0f16; padding:8px 15px; border-top:1px solid #1e1e2a; overflow-x:auto; white-space:nowrap; }
+    .signal-tag { display:inline-block; margin-right:8px; padding:5px 12px; border-radius:12px; font-size:12px; }
+    .signal-tag.up { background:#4caf50; color:#000; }
+    .signal-tag.down { background:#f44336; color:#fff; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <h1>🔻 CandleSniper VIP</h1>
-      <div class="subtext">Real‑time Pocket Option Dashboard</div>
-    </div>
+  <div class="topbar">
+    <div class="pair" id="currentPair">EUR/USD OTC</div>
+    <div id="signalCount">0 signals</div>
   </div>
-
-  <!-- Pair selector -->
-  <div class="pairs-scroll" id="pairSelector">
-    <!-- Filled by JS -->
+  <div id="chartContainer"></div>
+  <div id="pairSelector" style="display:flex; overflow-x:auto; padding:8px 15px; gap:8px; background:#0f0f16;"></div>
+  <div class="controls">
+    <div></div>
+    <button onclick="openPocketOption()">Trade ↗</button>
   </div>
+  <div class="signals-strip" id="signalsStrip"></div>
 
-  <!-- TradingView Chart Widget -->
-  <div class="chart-container" id="tvChartContainer">
-    <!-- TradingView widget will be inserted here -->
-  </div>
-
-  <!-- Recent Signals -->
-  <div class="signals-panel">
-    <h2>📊 Recent Signals</h2>
-    <div id="signalsList">
-      <div class="signal-row">Loading signals...</div>
-    </div>
-  </div>
-
-  <div class="footer">@CandleSniperVIPBot</div>
-
-  <!-- TradingView Charting Library (free) -->
-  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <script>
     // ========== CONFIG ==========
-    const FIREBASE_URL = "https://YOUR_PROJECT.firebaseio.com/signals.json"; // <-- PASTE YOUR FIREBASE URL
-
+    const GITHUB_REPO = "candlesniper-vip/candlesniper-data";  // your username/repo
+    const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_REPO}/main`;
     const PAIRS = [
-      "EURUSD_otc", "GBPUSD_otc", "USDJPY_otc", "AUDUSD_otc",
-      "USDCAD_otc", "NZDUSD_otc", "EURGBP_otc", "EURJPY_otc",
-      "GBPJPY_otc", "BTCUSD_otc", "ETHUSD_otc", "LTCUSD_otc"
+      "EURUSD_otc","GBPUSD_otc","USDJPY_otc","AUDUSD_otc",
+      "USDCAD_otc","NZDUSD_otc","EURGBP_otc","EURJPY_otc",
+      "GBPJPY_otc","BTCUSD_otc","ETHUSD_otc","LTCUSD_otc"
     ];
+
     let currentPair = PAIRS[0];
 
-    // ========== BUILD PAIR SELECTOR ==========
-    const pairSelector = document.getElementById('pairSelector');
-    PAIRS.forEach(p => {
-      const btn = document.createElement('div');
-      btn.className = 'pair-btn';
-      btn.textContent = p.replace('_otc','');
-      btn.onclick = () => switchPair(p);
-      pairSelector.appendChild(btn);
+    // Chart setup
+    const chart = LightweightCharts.createChart(document.getElementById('chartContainer'), {
+      layout: { backgroundColor: '#0b0b0f', textColor: '#d1d4dc' },
+      grid: { vertLines: { color: '#1e1e2a' }, horzLines: { color: '#1e1e2a' } },
+      timeScale: { timeVisible: true, secondsVisible: true },
     });
-    document.querySelector('.pair-btn').classList.add('active');
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: '#4caf50', downColor: '#f44336', borderDownColor: '#f44336',
+      borderUpColor: '#4caf50', wickDownColor: '#f44336', wickUpColor: '#4caf50',
+    });
 
-    // ========== TRADINGVIEW WIDGET ==========
-    function loadChart(symbol) {
-      document.getElementById('tvChartContainer').innerHTML = '';
-      new TradingView.widget({
-        "width": "100%",
-        "height": 280,
-        "symbol": symbol.toUpperCase(),
-        "interval": "15",
-        "timezone": "Etc/UTC",
-        "theme": "dark",
-        "style": "1",
-        "locale": "en",
-        "toolbar_bg": "#0a0a0a",
-        "enable_publishing": false,
-        "hide_side_toolbar": false,
-        "allow_symbol_change": false,
-        "container_id": "tvChartContainer"
-      });
-    }
+    // Pair selector
+    const pairScroll = document.getElementById('pairSelector');
+    PAIRS.forEach(p => {
+      const el = document.createElement('span');
+      el.style.cssText = "padding:6px 12px; border-radius:15px; background:#1e1e2a; color:#ccc; font-size:12px; cursor:pointer;";
+      el.textContent = p.replace('_otc','');
+      el.onclick = () => switchPair(p);
+      pairScroll.appendChild(el);
+    });
+
     function switchPair(pair) {
       currentPair = pair;
-      document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
-      event.target.classList.add('active');
-      loadChart(pair);
+      document.getElementById('currentPair').textContent = pair.replace('_otc','');
+      fetchCandles(pair);
     }
-    loadChart(currentPair);
 
-    // ========== SIGNALS FROM FIREBASE ==========
-    function fetchSignals() {
-      fetch(FIREBASE_URL)
-        .then(res => res.json())
-        .then(data => {
-          if (!data) return;
-          const signalsList = document.getElementById('signalsList');
-          let html = '';
-          Object.values(data).forEach(sig => {
-            const dirClass = sig.direction === 'UP' ? 'up' : 'down';
-            const emoji = sig.direction === 'UP' ? '🟢' : '🔻';
-            html += `<div class="signal-row">
-              <span class="symbol">${sig.symbol}</span>
-              <span class="price">${sig.price}</span>
-              <span class="direction ${dirClass}">${emoji} ${sig.direction}</span>
-              <span class="badge">${sig.time_left.toFixed(1)}s left</span>
-            </div>`;
-          });
-          signalsList.innerHTML = html || '<div class="signal-row">No signals yet</div>';
-        })
-        .catch(() => {});
+    async function fetchCandles(pair) {
+      try {
+        const resp = await fetch(`${RAW_BASE}/candles/${pair}.json`);
+        const data = await resp.json();
+        if (Array.isArray(data) && data.length > 0) {
+          candleSeries.setData(data.map(c => ({
+            time: c.time,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close
+          })));
+          chart.timeScale().fitContent();
+        }
+      } catch(e) {}
     }
-    fetchSignals();
-    setInterval(fetchSignals, 3000); // refresh every 3 seconds
+
+    async function updateSignals() {
+      try {
+        const resp = await fetch(`${RAW_BASE}/signals.json`);
+        const signals = await resp.json();
+        if (Array.isArray(signals)) {
+          const strip = document.getElementById('signalsStrip');
+          signals.sort((a,b) => b.timestamp - a.timestamp);
+          strip.innerHTML = signals.slice(0,10).map(s => {
+            const cls = s.direction === 'UP' ? 'up' : 'down';
+            const emoji = s.direction === 'UP' ? '🟢' : '🔻';
+            return `<span class="signal-tag ${cls}">${emoji} ${s.symbol} @ ${s.price.toFixed(5)}</span>`;
+          }).join('');
+          document.getElementById('signalCount').textContent = signals.length + ' signals';
+        }
+      } catch(e) {}
+    }
+
+    function openPocketOption() { window.open('https://pocketoption.com/en/terminal', '_blank'); }
+
+    switchPair(currentPair);
+    setInterval(updateSignals, 3000);
+    setInterval(() => fetchCandles(currentPair), 3000);
   </script>
 </body>
 </html>
